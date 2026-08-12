@@ -1,0 +1,14 @@
+{
+  "name": "swe",
+  "version": "0.1.0",
+  "description": "A dependency-free Go runtime for smallest-correct-change engineering guidance.",
+  "author": {
+    "name": "BittahCriminal",
+    "url": "https://github.com/bittahcriminal"
+  },
+  "homepage": "https://github.com/bittahcriminal/SWE",
+  "repository": "https://github.com/bittahcriminal/SWE",
+  "license": "MIT",
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks.json"
+}

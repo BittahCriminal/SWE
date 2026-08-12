@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "bash": "swe hook session-start",
+        "powershell": "swe hook session-start",
+        "timeoutSec": 5
+      }
+    ],
+    "userPromptSubmitted": [
+      {
+        "type": "command",
+        "bash": "swe hook prompt-submit",
+        "powershell": "swe hook prompt-submit",
+        "timeoutSec": 5
+      }
+    ]
+  }
+}

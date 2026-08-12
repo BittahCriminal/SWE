@@ -1,0 +1,26 @@
+{
+  "_comment": "Copy the hooks object into .qoder/settings.json after installing the swe binary on PATH.",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "swe hook prompt-submit"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "task|Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "swe hook subagent-start"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "swe hook session-start",
+            "timeout": 5,
+            "statusMessage": "Loading SWE mode..."
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "swe hook subagent-start",
+            "timeout": 5,
+            "statusMessage": "Loading SWE mode..."
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "swe hook prompt-submit",
+            "timeout": 5,
+            "statusMessage": "Tracking SWE mode..."
+          }
+        ]
+      }
+    ]
+  }
+}

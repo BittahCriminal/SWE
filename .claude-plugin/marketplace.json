@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "swe",
+  "description": "Smallest-correct-change engineering guidance, powered by Go.",
+  "owner": {
+    "name": "BittahCriminal",
+    "url": "https://github.com/bittahcriminal"
+  },
+  "plugins": [
+    {
+      "name": "swe",
+      "description": "Prefer reuse, the standard library, native features, and the minimum safe implementation.",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}
