@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -54,5 +55,26 @@ func TestInputHookNeverHangs(t *testing.T) {
 	}
 	if elapsed := time.Since(started); elapsed > 250*time.Millisecond {
 		t.Fatalf("hook blocked for %v", elapsed)
+	}
+}
+
+func TestRunInstallOpenCode(t *testing.T) {
+	configDir := t.TempDir()
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"install", "opencode", "--config-dir", configDir}, strings.NewReader(""), &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("install: code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+	if !strings.Contains(stdout.String(), configDir) {
+		t.Fatalf("install output = %q, want config path", stdout.String())
+	}
+	for _, path := range []string{
+		filepath.Join(configDir, "AGENTS.md"),
+		filepath.Join(configDir, "skills", "swe", "SKILL.md"),
+		filepath.Join(configDir, "commands", "swe.md"),
+	} {
+		if _, err := os.Stat(path); err != nil {
+			t.Errorf("missing installed file %s: %v", path, err)
+		}
 	}
 }

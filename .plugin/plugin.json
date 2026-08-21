@@ -1,0 +1,15 @@
+{
+  "name": "swe",
+  "version": "0.2.0",
+  "description": "Smallest-correct-change engineering guidance, powered by Go.",
+  "author": {
+    "name": "BittahCriminal",
+    "url": "https://github.com/bittahcriminal"
+  },
+  "homepage": "https://github.com/bittahcriminal/SWE",
+  "repository": "https://github.com/bittahcriminal/SWE",
+  "license": "MIT",
+  "keywords": ["golang", "yagni", "minimalism", "code-review", "productivity"],
+  "skills": "./skills/",
+  "hooks": "./hooks/copilot-hooks.json"
+}

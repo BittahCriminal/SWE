@@ -19,6 +19,7 @@ func isolateEnvironment(t *testing.T) string {
 	t.Setenv("COPILOT_PLUGIN_DATA", "")
 	t.Setenv("CLAUDE_PLUGIN_ROOT", "")
 	t.Setenv("QODER_SESSION_ID", "")
+	t.Setenv("GEMINI_SESSION_ID", "")
 	t.Setenv("SWE_DEFAULT_MODE", "")
 	t.Setenv("SWE_SUBAGENT_MATCHER", "")
 	return home
@@ -111,5 +112,17 @@ func TestVSCodeCopilotFallback(t *testing.T) {
 	}
 	if want := filepath.Join(home, ".claude", stateFile); path != want {
 		t.Fatalf("StatePath() = %q, want %q", path, want)
+	}
+}
+
+func TestDetectHostGemini(t *testing.T) {
+	home := isolateEnvironment(t)
+	t.Setenv("GEMINI_SESSION_ID", "gemini-test-session")
+	if DetectHost() != HostGemini {
+		t.Fatalf("DetectHost() = %q, want gemini", DetectHost())
+	}
+	want := filepath.Join(home, ".gemini", stateFile)
+	if got, err := StatePath(); err != nil || got != want {
+		t.Fatalf("StatePath() = %q, %v; want %q", got, err, want)
 	}
 }

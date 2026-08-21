@@ -103,6 +103,24 @@ func TestNativeClaudeAndCopilotOutput(t *testing.T) {
 	}
 }
 
+func TestGeminiSessionOutput(t *testing.T) {
+	home := isolateEnvironment(t)
+	t.Setenv("GEMINI_SESSION_ID", "gemini-test-session")
+	t.Setenv("SWE_DEFAULT_MODE", "ultra")
+
+	output := decodeOutput(t, HandleSessionStart())
+	if output.SystemMessage != "SWE:ULTRA" || output.HookSpecificOutput == nil {
+		t.Fatalf("unexpected Gemini session output: %#v", output)
+	}
+	if output.HookSpecificOutput.HookEventName != "SessionStart" || !strings.Contains(output.HookSpecificOutput.AdditionalContext, "level: ultra") {
+		t.Fatalf("Gemini context missing: %#v", output.HookSpecificOutput)
+	}
+	wantState := filepath.Join(home, ".gemini", stateFile)
+	if data, err := os.ReadFile(wantState); err != nil || string(data) != "ultra" {
+		t.Fatalf("Gemini state = %q, %v", data, err)
+	}
+}
+
 func TestSubagentMatcher(t *testing.T) {
 	isolateEnvironment(t)
 	if err := SetMode(ModeFull); err != nil {

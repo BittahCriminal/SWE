@@ -1,0 +1,8 @@
+---
+description: Apply SWE smallest-correct-change guidance
+---
+
+Load the `swe` skill and apply it to this request. Use `$ARGUMENTS` as the
+requested mode when it is `lite`, `full`, or `ultra`; use `full` when no valid
+mode is supplied. Preserve validation, security, accessibility, and explicitly
+requested behavior.

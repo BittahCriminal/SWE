@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime/debug"
 	"strings"
 	"time"
 
 	swe "github.com/bittahcriminal/SWE"
 )
 
-var version = "dev"
 var hookInputTimeout = time.Second
 
 const usage = `SWE — smallest-working-engineering mode for AI coding agents
@@ -20,6 +20,7 @@ Usage:
   swe mode [lite|full|ultra|review|off]
   swe default [lite|full|ultra|off]
   swe status [--badge]
+  swe install opencode [--config-dir PATH]
   swe hook session-start|prompt-submit|subagent-start
   swe version
 `
@@ -35,6 +36,10 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	}
 	switch args[0] {
 	case "version":
+		version := "(devel)"
+		if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" {
+			version = info.Main.Version
+		}
 		fmt.Fprintln(stdout, version)
 		return 0
 	case "instructions":
@@ -101,6 +106,28 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			active = string(mode)
 		}
 		fmt.Fprintf(stdout, "mode=%s default=%s\n", active, swe.ResolveDefaultMode())
+		return 0
+	case "install":
+		const installUsage = "usage: swe install opencode [--config-dir PATH]"
+		if len(args) < 2 || args[1] != "opencode" {
+			return usageError(stderr, installUsage)
+		}
+		var configDir string
+		switch {
+		case len(args) == 4 && args[2] == "--config-dir" && strings.TrimSpace(args[3]) != "":
+			configDir = args[3]
+		case len(args) == 2:
+			var err error
+			if configDir, err = swe.OpenCodeConfigDir(); err != nil {
+				return runtimeError(stderr, err)
+			}
+		default:
+			return usageError(stderr, installUsage)
+		}
+		if err := swe.InstallOpenCode(configDir); err != nil {
+			return runtimeError(stderr, err)
+		}
+		fmt.Fprintf(stdout, "SWE installed for OpenCode at %s\n", configDir)
 		return 0
 	case "hook":
 		if len(args) != 2 {

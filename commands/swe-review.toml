@@ -1,0 +1,6 @@
+description = "Review the current change using SWE"
+prompt = """
+Load the `swe-review` skill. Review `{{args}}`, or the current change when no
+arguments are supplied, for unnecessary code, dependencies, abstractions, and
+configuration. Do not modify files.
+"""
