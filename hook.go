@@ -36,6 +36,11 @@ func FormatHookOutput(event string, mode Mode, context string) []byte {
 		if context != "" {
 			output.HookSpecificOutput = &hookSpecificOutput{event, context}
 		}
+	case HostGemini:
+		output.SystemMessage = "SWE:" + strings.ToUpper(string(mode))
+		if context != "" {
+			output.HookSpecificOutput = &hookSpecificOutput{event, context}
+		}
 	case HostQoder:
 		if context != "" {
 			output.HookSpecificOutput = &hookSpecificOutput{event, context}

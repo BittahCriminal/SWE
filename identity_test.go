@@ -20,9 +20,22 @@ func TestRepositoryUsesSWEIdentity(t *testing.T) {
 			`"name": "swe"`,
 			`"repository": "https://github.com/bittahcriminal/SWE"`,
 		},
+		".plugin/plugin.json": {
+			`"name": "swe"`,
+			`"hooks": "./hooks/copilot-hooks.json"`,
+			`"repository": "https://github.com/bittahcriminal/SWE"`,
+		},
+		"gemini-extension.json": {
+			`"name": "swe"`,
+			`"description": "Smallest-correct-change engineering guidance, powered by Go."`,
+		},
 		"README.md": {
 			"# SWE",
 			"go install github.com/bittahcriminal/SWE/cmd/swe@latest",
+			"copilot plugin marketplace add bittahcriminal/SWE",
+			"copilot plugin install swe@swe",
+			"gemini extensions install https://github.com/bittahcriminal/SWE",
+			"swe install opencode",
 		},
 	}
 

@@ -20,6 +20,7 @@ const (
 	HostClaude  Host = "claude"
 	HostCodex   Host = "codex"
 	HostCopilot Host = "copilot"
+	HostGemini  Host = "gemini"
 	HostQoder   Host = "qoder"
 )
 
@@ -30,6 +31,9 @@ func DetectHost() Host {
 	}
 	if os.Getenv("PLUGIN_DATA") != "" {
 		return HostCodex
+	}
+	if os.Getenv("GEMINI_SESSION_ID") != "" {
+		return HostGemini
 	}
 	if os.Getenv("QODER_SESSION_ID") != "" {
 		return HostQoder
@@ -101,6 +105,10 @@ func StatePath() (string, error) {
 		if dir == "" {
 			dir, err = claudeDir()
 		}
+	case HostGemini:
+		var home string
+		home, err = userHomeDir()
+		dir = filepath.Join(home, ".gemini")
 	case HostQoder:
 		var home string
 		home, err = userHomeDir()
