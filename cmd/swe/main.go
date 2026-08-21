@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime/debug"
 	"strings"
 	"time"
 
 	swe "github.com/bittahcriminal/SWE"
 )
 
-var version = "dev"
 var hookInputTimeout = time.Second
 
 const usage = `SWE — smallest-working-engineering mode for AI coding agents
@@ -36,6 +36,10 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	}
 	switch args[0] {
 	case "version":
+		version := "(devel)"
+		if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" {
+			version = info.Main.Version
+		}
 		fmt.Fprintln(stdout, version)
 		return 0
 	case "instructions":

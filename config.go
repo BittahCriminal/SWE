@@ -46,21 +46,12 @@ func isVSCodeCopilotRoot(root string) bool {
 	return strings.Contains(root, "/.vscode/") && strings.Contains(root, "/agent-plugins/")
 }
 
-func userHomeDir() (string, error) {
-	if runtime.GOOS == "windows" {
-		if home := os.Getenv("USERPROFILE"); home != "" {
-			return home, nil
-		}
-	}
-	return os.UserHomeDir()
-}
-
 // ConfigDir returns SWE's platform-appropriate persistent configuration directory.
 func ConfigDir() (string, error) {
 	if dir := os.Getenv("XDG_CONFIG_HOME"); dir != "" {
 		return filepath.Join(dir, "swe"), nil
 	}
-	home, err := userHomeDir()
+	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
@@ -86,7 +77,7 @@ func claudeDir() (string, error) {
 	if dir := os.Getenv("CLAUDE_CONFIG_DIR"); dir != "" {
 		return dir, nil
 	}
-	home, err := userHomeDir()
+	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
@@ -107,11 +98,11 @@ func StatePath() (string, error) {
 		}
 	case HostGemini:
 		var home string
-		home, err = userHomeDir()
+		home, err = os.UserHomeDir()
 		dir = filepath.Join(home, ".gemini")
 	case HostQoder:
 		var home string
-		home, err = userHomeDir()
+		home, err = os.UserHomeDir()
 		dir = filepath.Join(home, ".qoder")
 	default:
 		dir, err = claudeDir()

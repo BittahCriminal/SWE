@@ -23,7 +23,7 @@ func OpenCodeConfigDir() (string, error) {
 	if dir := os.Getenv("XDG_CONFIG_HOME"); dir != "" {
 		return filepath.Join(dir, "opencode"), nil
 	}
-	home, err := userHomeDir()
+	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
