@@ -33,9 +33,6 @@ func OpenCodeConfigDir() (string, error) {
 // InstallOpenCode installs SWE rules, skills, and commands without replacing
 // unrelated OpenCode configuration.
 func InstallOpenCode(configDir string) error {
-	if strings.TrimSpace(configDir) == "" {
-		return errors.New("OpenCode config directory is empty")
-	}
 	if err := installOpenCodeRules(configDir); err != nil {
 		return err
 	}

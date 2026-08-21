@@ -104,17 +104,21 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "mode=%s default=%s\n", active, swe.ResolveDefaultMode())
 		return 0
 	case "install":
+		const installUsage = "usage: swe install opencode [--config-dir PATH]"
 		if len(args) < 2 || args[1] != "opencode" {
-			return usageError(stderr, "usage: swe install opencode [--config-dir PATH]")
+			return usageError(stderr, installUsage)
 		}
-		configDir, err := swe.OpenCodeConfigDir()
-		if err != nil {
-			return runtimeError(stderr, err)
-		}
-		if len(args) == 4 && args[2] == "--config-dir" && strings.TrimSpace(args[3]) != "" {
+		var configDir string
+		switch {
+		case len(args) == 4 && args[2] == "--config-dir" && strings.TrimSpace(args[3]) != "":
 			configDir = args[3]
-		} else if len(args) != 2 {
-			return usageError(stderr, "usage: swe install opencode [--config-dir PATH]")
+		case len(args) == 2:
+			var err error
+			if configDir, err = swe.OpenCodeConfigDir(); err != nil {
+				return runtimeError(stderr, err)
+			}
+		default:
+			return usageError(stderr, installUsage)
 		}
 		if err := swe.InstallOpenCode(configDir); err != nil {
 			return runtimeError(stderr, err)
