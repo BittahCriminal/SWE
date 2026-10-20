@@ -26,11 +26,17 @@ func ParseMode(value string) (Mode, bool) {
 	}
 }
 
+// ParseRuntimeMode accepts modes that may persist for a session. Review is a
+// one-shot skill, not a session level.
+func ParseRuntimeMode(value string) (Mode, bool) {
+	mode, ok := ParseMode(value)
+	return mode, ok && mode != ModeReview
+}
+
 // ParseDefaultMode accepts modes that may be persisted as a startup default.
 // Review is intentionally session-only.
 func ParseDefaultMode(value string) (Mode, bool) {
-	mode, ok := ParseMode(value)
-	return mode, ok && mode != ModeReview
+	return ParseRuntimeMode(value)
 }
 
 // IsDeactivationCommand matches only standalone deactivation commands.

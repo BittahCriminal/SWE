@@ -19,9 +19,13 @@ func isolateEnvironment(t *testing.T) string {
 	t.Setenv("COPILOT_PLUGIN_DATA", "")
 	t.Setenv("CLAUDE_PLUGIN_ROOT", "")
 	t.Setenv("QODER_SESSION_ID", "")
+	t.Setenv("QODER_CONFIG_DIR", "")
 	t.Setenv("GEMINI_SESSION_ID", "")
+	t.Setenv("CLAUDE_PROJECT_DIR", "")
+	t.Setenv("GEMINI_PROJECT_DIR", "")
 	t.Setenv("SWE_DEFAULT_MODE", "")
 	t.Setenv("SWE_SUBAGENT_MATCHER", "")
+	t.Setenv("SWE_MAP", "0")
 	return home
 }
 
@@ -124,5 +128,46 @@ func TestDetectHostGemini(t *testing.T) {
 	want := filepath.Join(home, ".gemini", stateFile)
 	if got, err := StatePath(); err != nil || got != want {
 		t.Fatalf("StatePath() = %q, %v; want %q", got, err, want)
+	}
+}
+
+func TestStateIsProjectScoped(t *testing.T) {
+	home := isolateEnvironment(t)
+	projectA := filepath.Join(home, "project-a")
+	t.Setenv("CLAUDE_PROJECT_DIR", projectA)
+	if err := SetMode(ModeLite); err != nil {
+		t.Fatal(err)
+	}
+	projectState, err := StatePath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filepath.Dir(projectState) != filepath.Join(home, ".claude", "swe-modes") {
+		t.Fatalf("project state path = %q", projectState)
+	}
+	if data, err := os.ReadFile(projectState); err != nil || string(data) != "lite" {
+		t.Fatalf("project state = %q, %v", data, err)
+	}
+	if data, err := os.ReadFile(filepath.Join(home, ".claude", stateFile)); err != nil || string(data) != "lite" {
+		t.Fatalf("shared state = %q, %v", data, err)
+	}
+
+	t.Setenv("CLAUDE_PROJECT_DIR", filepath.Join(home, "project-b"))
+	if mode, ok := ReadMode(); ok {
+		t.Fatalf("project B inherited project A mode %q", mode)
+	}
+}
+
+func TestQoderConfigDirAndOffState(t *testing.T) {
+	isolateEnvironment(t)
+	configDir := filepath.Join(t.TempDir(), "qoder-config")
+	t.Setenv("QODER_SESSION_ID", "session")
+	t.Setenv("QODER_CONFIG_DIR", configDir)
+	if err := SetMode(ModeOff); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(configDir, stateFile))
+	if err != nil || string(data) != "off" {
+		t.Fatalf("Qoder off state = %q, %v", data, err)
 	}
 }

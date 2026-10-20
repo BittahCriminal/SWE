@@ -26,6 +26,9 @@ func TestParseModes(t *testing.T) {
 			t.Errorf("ParseDefaultMode(%q) valid = %v; want %v", test.input, validDefault, test.validDefault)
 		}
 	}
+	if _, ok := ParseRuntimeMode("review"); ok {
+		t.Fatal("review must not be a persistent runtime mode")
+	}
 }
 
 func TestDeactivationMustBeStandalone(t *testing.T) {

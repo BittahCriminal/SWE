@@ -1,6 +1,6 @@
 {
   "name": "swe",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A dependency-free Go runtime for smallest-correct-change engineering guidance.",
   "author": {
     "name": "BittahCriminal",
@@ -11,6 +11,7 @@
   "license": "MIT",
   "keywords": ["golang", "yagni", "minimalism", "code-review", "productivity"],
   "skills": "./skills/",
+  "hooks": "./hooks/claude-codex-hooks.json",
   "interface": {
     "displayName": "SWE",
     "shortDescription": "Smallest correct change, delivered as one Go binary.",

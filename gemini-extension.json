@@ -1,5 +1,6 @@
 {
   "name": "swe",
-  "version": "0.2.0",
-  "description": "Smallest-correct-change engineering guidance, powered by Go."
+  "version": "0.3.0",
+  "description": "Smallest-correct-change engineering guidance, powered by Go.",
+  "contextFileName": "AGENTS.md"
 }

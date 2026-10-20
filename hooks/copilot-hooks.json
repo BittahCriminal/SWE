@@ -6,7 +6,7 @@
         "type": "command",
         "bash": "swe hook session-start",
         "powershell": "swe hook session-start",
-        "timeoutSec": 5
+        "timeoutSec": 15
       }
     ],
     "userPromptSubmitted": [
@@ -14,7 +14,7 @@
         "type": "command",
         "bash": "swe hook prompt-submit",
         "powershell": "swe hook prompt-submit",
-        "timeoutSec": 5
+        "timeoutSec": 15
       }
     ]
   }

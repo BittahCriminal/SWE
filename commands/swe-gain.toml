@@ -1,0 +1,6 @@
+description = "Report measurable SWE impact without invented savings"
+prompt = """
+Load the `swe-gain` skill. Use only reproducible measurements from `{{args}}`
+or available artifacts. Never invent a baseline or per-repository savings.
+Change no mode or files.
+"""

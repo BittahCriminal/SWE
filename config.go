@@ -2,6 +2,7 @@ package swe
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -84,8 +85,7 @@ func claudeDir() (string, error) {
 	return filepath.Join(home, ".claude"), nil
 }
 
-// StatePath returns the host-scoped session-mode file.
-func StatePath() (string, error) {
+func stateDir() (string, error) {
 	var dir string
 	var err error
 	switch DetectHost() {
@@ -101,9 +101,12 @@ func StatePath() (string, error) {
 		home, err = os.UserHomeDir()
 		dir = filepath.Join(home, ".gemini")
 	case HostQoder:
-		var home string
-		home, err = os.UserHomeDir()
-		dir = filepath.Join(home, ".qoder")
+		dir = os.Getenv("QODER_CONFIG_DIR")
+		if dir == "" {
+			var home string
+			home, err = os.UserHomeDir()
+			dir = filepath.Join(home, ".qoder")
+		}
 	default:
 		dir, err = claudeDir()
 	}
@@ -113,7 +116,54 @@ func StatePath() (string, error) {
 	if dir == "" {
 		return "", errors.New("could not resolve SWE state directory")
 	}
+	return dir, nil
+}
+
+func projectDir() string {
+	for _, name := range []string{"CLAUDE_PROJECT_DIR", "GEMINI_PROJECT_DIR", "QODER_PROJECT_DIR"} {
+		if dir := strings.TrimSpace(os.Getenv(name)); dir != "" {
+			return filepath.Clean(dir)
+		}
+	}
+	return ""
+}
+
+func globalStatePath() (string, error) {
+	dir, err := stateDir()
+	if err != nil {
+		return "", err
+	}
 	return filepath.Join(dir, stateFile), nil
+}
+
+// StatePath returns the host- and project-scoped session-mode file. Hooks that
+// do not expose a project directory use the host's shared state file.
+func StatePath() (string, error) {
+	dir, err := stateDir()
+	if err != nil {
+		return "", err
+	}
+	project := projectDir()
+	if project == "" {
+		return filepath.Join(dir, stateFile), nil
+	}
+	digest := sha256.Sum256([]byte(project))
+	return filepath.Join(dir, "swe-modes", fmt.Sprintf("%x", digest)), nil
+}
+
+func statePaths() ([]string, error) {
+	effective, err := StatePath()
+	if err != nil {
+		return nil, err
+	}
+	shared, err := globalStatePath()
+	if err != nil {
+		return nil, err
+	}
+	if effective == shared {
+		return []string{effective}, nil
+	}
+	return []string{effective, shared}, nil
 }
 
 // ResolveDefaultMode applies environment, config-file, then built-in precedence.
@@ -165,8 +215,7 @@ func SaveDefaultMode(mode Mode) error {
 	return writeAtomic(path, append(data, '\n'), 0o600)
 }
 
-// ReadMode returns the active host-scoped mode. Missing or invalid state is inactive.
-func ReadMode() (Mode, bool) {
+func readStoredMode() (Mode, bool) {
 	path, err := StatePath()
 	if err != nil {
 		return "", false
@@ -175,37 +224,51 @@ func ReadMode() (Mode, bool) {
 	if err != nil {
 		return "", false
 	}
-	mode, ok := ParseMode(string(data))
+	return ParseRuntimeMode(string(data))
+}
+
+// ReadMode returns the active host-scoped mode. Missing, off, or invalid state
+// is inactive.
+func ReadMode() (Mode, bool) {
+	mode, ok := readStoredMode()
 	return mode, ok && mode != ModeOff
 }
 
-// SetMode persists a host-scoped session mode. Off removes the active state.
+// SetMode persists a host-scoped session mode. Qoder stores off explicitly so
+// its per-prompt activation hook does not immediately turn SWE back on.
 func SetMode(mode Mode) error {
-	parsed, ok := ParseMode(string(mode))
+	parsed, ok := ParseRuntimeMode(string(mode))
 	if !ok || parsed != mode {
 		return fmt.Errorf("invalid mode %q", mode)
 	}
-	if mode == ModeOff {
+	if mode == ModeOff && DetectHost() != HostQoder {
 		return ClearMode()
 	}
-	path, err := StatePath()
+	paths, err := statePaths()
 	if err != nil {
 		return err
 	}
-	return writeAtomic(path, []byte(mode), 0o600)
+	for _, path := range paths {
+		if err := writeAtomic(path, []byte(mode), 0o600); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ClearMode removes the active host-scoped mode.
 func ClearMode() error {
-	path, err := StatePath()
+	paths, err := statePaths()
 	if err != nil {
 		return err
 	}
-	err = os.Remove(path)
-	if errors.Is(err, os.ErrNotExist) {
-		return nil
+	for _, path := range paths {
+		err = os.Remove(path)
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
 	}
-	return err
+	return nil
 }
 
 func writeAtomic(path string, data []byte, mode os.FileMode) (err error) {

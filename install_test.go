@@ -26,7 +26,7 @@ func TestInstallOpenCodePreservesRulesAndIsIdempotent(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := string(agents)
-	for _, want := range []string{"# Existing rules", "Keep this.", "# SWE: smallest correct change"} {
+	for _, want := range []string{"# Existing rules", "Keep this.", "# SWE, lazy senior dev mode"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("AGENTS.md missing %q:\n%s", want, text)
 		}
@@ -41,13 +41,17 @@ func TestInstallOpenCodePreservesRulesAndIsIdempotent(t *testing.T) {
 		filepath.Join(configDir, "skills", "swe-audit", "SKILL.md"),
 		filepath.Join(configDir, "commands", "swe.md"),
 		filepath.Join(configDir, "commands", "swe-review.md"),
+		filepath.Join(configDir, "commands", "swe-audit.md"),
+		filepath.Join(configDir, "commands", "swe-debt.md"),
+		filepath.Join(configDir, "commands", "swe-gain.md"),
+		filepath.Join(configDir, "commands", "swe-help.md"),
 	} {
 		contents, err := os.ReadFile(path)
 		if err != nil {
 			t.Errorf("read %s: %v", path, err)
 			continue
 		}
-		if !strings.Contains(string(contents), "SWE") {
+		if !strings.Contains(strings.ToLower(string(contents)), "swe") {
 			t.Errorf("%s does not identify SWE", path)
 		}
 	}
