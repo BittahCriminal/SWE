@@ -20,6 +20,27 @@ func TestRunHelpAndValidation(t *testing.T) {
 	if code := run([]string{"instructions", "off"}, strings.NewReader(""), &stdout, &stderr); code != 2 {
 		t.Fatalf("invalid instructions mode code=%d", code)
 	}
+	stdout.Reset()
+	stderr.Reset()
+	if code := run([]string{"mode", "review"}, strings.NewReader(""), &stdout, &stderr); code != 2 {
+		t.Fatalf("review must be one-shot, mode code=%d", code)
+	}
+}
+
+func TestSessionStartFallsBackWhenInputStaysOpen(t *testing.T) {
+	t.Setenv("PLUGIN_DATA", t.TempDir())
+	t.Setenv("SWE_MAP", "0")
+	t.Setenv("SWE_DEFAULT_MODE", "full")
+	reader, writer := io.Pipe()
+	t.Cleanup(func() { _ = writer.Close() })
+	previous := sessionInputTimeout
+	sessionInputTimeout = time.Millisecond
+	t.Cleanup(func() { sessionInputTimeout = previous })
+
+	output := runSessionStartHook(reader)
+	if !strings.Contains(string(output), "SWE MODE ACTIVE") {
+		t.Fatalf("session fallback output = %q", output)
+	}
 }
 
 func TestRunStatus(t *testing.T) {

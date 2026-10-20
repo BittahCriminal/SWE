@@ -1,18 +1,22 @@
 ---
 name: swe-gain
 description: >
-  Explain the evidence behind SWE's minimal-engineering rules without inventing
-  per-repository savings. Use for /swe-gain or "what does SWE save".
+  Explain and report measurable SWE impact without inventing per-repository
+  savings. One-shot display. Use for /swe-gain, "what does SWE save", or
+  "SWE impact".
 ---
 
 # SWE Gain
 
-SWE does not claim universal percentage savings. When invoked, explain how to
-measure SWE on the current workload: compare equivalent baseline and SWE runs,
-then report changed lines, tokens, cost, elapsed time, test outcomes, and safety
-checks. Report only measurements the user supplies or that can be reproduced
-from available artifacts.
+SWE does not claim a universal savings percentage. A live repository has no
+record of the larger implementation that was never written, so never invent
+per-repo lines, tokens, cost, or time saved.
 
-Never invent savings for the current repository—the unbuilt baseline does not
-exist. Point users to `/swe-debt` for counted shortcuts and `/swe-audit` for
-current deletion opportunities. One-shot display; change no mode or files.
+When comparable baseline and SWE runs exist, report changed lines, output
+tokens, cost, elapsed time, test outcomes, hidden checks, and safety checks.
+Name the task set, model, effort, number of runs, aggregation method, and known
+limits. Use only supplied or reproducible artifacts.
+
+For this repository, point to `/swe-debt` for counted shortcuts and
+`/swe-audit` for current deletion opportunities. One-shot display; change no
+mode or files.

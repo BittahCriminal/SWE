@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -12,12 +13,15 @@ import (
 )
 
 var hookInputTimeout = time.Second
+var sessionInputTimeout = time.Second
+
+const maxCLIHookInput = 1 << 20
 
 const usage = `SWE — smallest-working-engineering mode for AI coding agents
 
 Usage:
   swe instructions [lite|full|ultra|review]
-  swe mode [lite|full|ultra|review|off]
+  swe mode [lite|full|ultra|off]
   swe default [lite|full|ultra|off]
   swe status [--badge]
   swe install opencode [--config-dir PATH]
@@ -65,9 +69,9 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			return 0
 		}
 		if len(args) != 2 {
-			return usageError(stderr, "usage: swe mode [lite|full|ultra|review|off]")
+			return usageError(stderr, "usage: swe mode [lite|full|ultra|off]")
 		}
-		mode, ok := swe.ParseMode(args[1])
+		mode, ok := swe.ParseRuntimeMode(args[1])
 		if !ok {
 			return usageError(stderr, "invalid mode: "+args[1])
 		}
@@ -136,7 +140,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		var output []byte
 		switch strings.ToLower(args[1]) {
 		case "session-start":
-			output = swe.HandleSessionStart()
+			output = runSessionStartHook(stdin)
 		case "prompt-submit":
 			output = runInputHook(stdin, swe.HandlePromptSubmit)
 		case "subagent-start":
@@ -152,9 +156,29 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 }
 
 func runInputHook(stdin io.Reader, hook func(io.Reader) []byte) []byte {
+	return runInputHookWithTimeout(stdin, hook, hookInputTimeout)
+}
+
+func runSessionStartHook(stdin io.Reader) []byte {
+	input := make(chan []byte, 1)
+	go func() {
+		data, _ := io.ReadAll(io.LimitReader(stdin, maxCLIHookInput+1))
+		input <- data
+	}()
+	timer := time.NewTimer(sessionInputTimeout)
+	defer timer.Stop()
+	select {
+	case data := <-input:
+		return swe.HandleSessionStartInput(bytes.NewReader(data))
+	case <-timer.C:
+		return swe.HandleSessionStartInput(nil)
+	}
+}
+
+func runInputHookWithTimeout(stdin io.Reader, hook func(io.Reader) []byte, timeout time.Duration) []byte {
 	result := make(chan []byte, 1)
 	go func() { result <- hook(stdin) }()
-	timer := time.NewTimer(hookInputTimeout)
+	timer := time.NewTimer(timeout)
 	defer timer.Stop()
 	select {
 	case output := <-result:

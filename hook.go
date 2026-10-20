@@ -31,7 +31,11 @@ func FormatHookOutput(event string, mode Mode, context string) []byte {
 		if event == "SessionStart" && context != "" {
 			output.AdditionalContext = context
 		}
-	case HostCodex, HostGemini:
+	case HostCodex:
+		if context != "" {
+			output.HookSpecificOutput = &hookSpecificOutput{event, context}
+		}
+	case HostGemini:
 		output.SystemMessage = "SWE:" + strings.ToUpper(string(mode))
 		if context != "" {
 			output.HookSpecificOutput = &hookSpecificOutput{event, context}
@@ -50,20 +54,44 @@ func FormatHookOutput(event string, mode Mode, context string) []byte {
 	return data
 }
 
+type sessionPayload struct {
+	Source string `json:"source"`
+}
+
 // HandleSessionStart activates the configured default and emits its ruleset.
-// State writes are best-effort so a lifecycle hook can never block the host.
 func HandleSessionStart() []byte {
+	return HandleSessionStartInput(nil)
+}
+
+// HandleSessionStartInput preserves the live mode when a host re-runs
+// SessionStart during context compaction. State writes and the optional map are
+// best-effort so lifecycle hooks never block the host.
+func HandleSessionStartInput(reader io.Reader) []byte {
 	mode := ResolveDefaultMode()
+	var payload sessionPayload
+	if decodeHookInput(reader, &payload) && strings.EqualFold(strings.TrimSpace(payload.Source), "compact") {
+		if stored, ok := readStoredMode(); ok {
+			mode = stored
+		} else {
+			mode = ModeOff
+		}
+	}
 	if mode == ModeOff {
 		_ = ClearMode()
-		context := ""
-		if DetectHost() == HostClaude {
-			context = "OK"
-		}
-		return FormatHookOutput("SessionStart", mode, context)
+		return nil
 	}
 	_ = SetMode(mode)
-	return FormatHookOutput("SessionStart", mode, BuildInstructions(mode))
+	context := BuildInstructions(mode)
+	if os.Getenv("SWE_MAP") != "0" {
+		root := projectDir()
+		if root == "" {
+			root, _ = os.Getwd()
+		}
+		if codebaseMap := BuildCodebaseMap(root, codebaseMapBudget()); codebaseMap != "" {
+			context += "\n\n" + codebaseMap
+		}
+	}
+	return FormatHookOutput("SessionStart", mode, context)
 }
 
 type promptPayload struct {
@@ -110,9 +138,6 @@ func parsePromptCommand(prompt string) parsedPrompt {
 	if strings.HasPrefix(head, "@") || strings.HasPrefix(head, "$") {
 		head = "/" + head[1:]
 	}
-	if head == "/swe-review" || head == "/swe:swe-review" {
-		return parsedPrompt{action: actionSet, mode: ModeReview}
-	}
 	if head != "/swe" && head != "/swe:swe" {
 		return parsedPrompt{}
 	}
@@ -136,7 +161,7 @@ func parsePromptCommand(prompt string) parsedPrompt {
 }
 
 func activeOrDefault() Mode {
-	if mode, ok := ReadMode(); ok {
+	if mode, ok := readStoredMode(); ok {
 		return mode
 	}
 	return ResolveDefaultMode()
@@ -158,7 +183,18 @@ func HandlePromptSubmit(reader io.Reader) []byte {
 
 	switch action.action {
 	case actionReport:
-		context = "SWE MODE ACTIVE — level: " + string(mode)
+		if live, ok := ReadMode(); ok {
+			mode = live
+			context = "SWE MODE ACTIVE — level: " + string(mode)
+		} else {
+			mode = ResolveDefaultMode()
+			if mode == ModeOff {
+				mode = ModeFull
+			}
+			_ = SetMode(mode)
+			changed = true
+			context = "SWE MODE CHANGED — level: " + string(mode)
+		}
 	case actionSetDefault:
 		if SaveDefaultMode(action.mode) == nil {
 			mode = action.mode
@@ -167,7 +203,7 @@ func HandlePromptSubmit(reader io.Reader) []byte {
 	case actionSet:
 		mode = action.mode
 		if mode == ModeOff {
-			_ = ClearMode()
+			_ = SetMode(ModeOff)
 			deactivated = true
 			context = "SWE MODE OFF"
 		} else {
@@ -180,23 +216,29 @@ func HandlePromptSubmit(reader io.Reader) []byte {
 	default:
 		if IsDeactivationCommand(payload.Prompt) {
 			mode = ModeOff
-			_ = ClearMode()
+			_ = SetMode(ModeOff)
 			deactivated = true
 			context = "SWE MODE OFF"
 		}
 	}
 
-	if host == HostQoder && !deactivated && action.action != actionSetDefault && action.action != actionInvalid {
-		mode = activeOrDefault()
-		if mode != ModeOff {
-			_ = SetMode(mode)
-			prefix := ""
-			if changed {
-				prefix = "SWE MODE CHANGED — level: " + string(mode) + "\n\n"
-			} else if action.action == actionReport {
-				prefix = "SWE MODE ACTIVE — level: " + string(mode) + "\n\n"
+	if changed && host == HostCodex {
+		context += "\n\n" + BuildInstructions(mode)
+	}
+
+	if host == HostQoder && !deactivated && action.action != actionInvalid {
+		mode, _ = readStoredMode()
+		if mode == "" {
+			mode = ResolveDefaultMode()
+			if mode != ModeOff {
+				_ = SetMode(mode)
 			}
-			context = prefix + BuildInstructions(mode)
+		}
+		if mode != ModeOff {
+			if context != "" {
+				context += "\n\n"
+			}
+			context += BuildInstructions(mode)
 		}
 	}
 	if context == "" {

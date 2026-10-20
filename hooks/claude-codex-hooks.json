@@ -7,6 +7,7 @@
           {
             "type": "command",
             "command": "swe hook session-start",
+            "timeout": 15,
             "statusMessage": "Loading SWE mode..."
           }
         ]
@@ -18,6 +19,7 @@
           {
             "type": "command",
             "command": "swe hook subagent-start",
+            "timeout": 15,
             "statusMessage": "Loading SWE mode..."
           }
         ]
@@ -29,6 +31,7 @@
           {
             "type": "command",
             "command": "swe hook prompt-submit",
+            "timeout": 15,
             "statusMessage": "Tracking SWE mode..."
           }
         ]

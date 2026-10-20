@@ -1,33 +1,40 @@
 # SWE
 
-SWE is a Go-native smallest-correct-change runtime for AI coding agents,
-delivered as one static binary with no runtime dependencies.
+SWE is a Go-native lazy senior developer mode for AI coding agents. It makes
+the smallest complete change: every caller, test, fixture, config entry, and
+export the task really touches, with no speculative layers around it.
 
-The important split is intentional:
+The split is intentional:
 
-- Go handles mode state, configuration, lifecycle hooks, host detection, and output protocols.
-- Markdown holds the agent instructions and skills because that is what coding agents consume.
+- Go handles mode state, configuration, lifecycle hooks, host protocols, and a
+  bounded codebase map.
+- Markdown holds instructions and skills because that is what agents consume.
 
-This keeps the lifecycle runtime native to Go without pretending that
-instruction assets should become Go source.
+One static binary runs the portable lifecycle; there are no runtime package
+dependencies.
 
 ## What it does
 
-Before code is written, SWE walks a short ladder: skip speculative work, reuse
-what exists, prefer the standard library, prefer native platform behavior,
-reuse installed dependencies, and only then write the minimum implementation.
-It does not trade away validation, data-loss protection, security,
-accessibility, or a runnable check for non-trivial logic.
+Before writing, SWE traces the real path a change touches and checks what it
+could break. It then takes the first complete option that works: skip an
+unneeded feature, reuse code already present, use the standard library or
+platform, reuse an installed dependency, use one clear line, or finally write
+the minimum implementation.
 
-Modes:
+SWE never cuts trust-boundary validation, data-loss protection, security,
+accessibility, real-hardware calibration, requested behavior, or the one small
+test non-trivial logic needs. Replies end with skipped work and known risk.
 
 | Mode | Behavior |
 |------|----------|
-| `lite` | Build the request and mention the lazier alternative. |
-| `full` | Enforce the complete ladder. Default. |
-| `ultra` | Prefer deletion and challenge speculative requirements. |
-| `review` | Review only for over-engineering. Session-only. |
+| `lite` | Build what was asked and name the smaller option. |
+| `full` | Make the smallest complete change. Default. |
+| `ultra` | Also challenge unjustified parts of the request before building. |
 | `off` | Inject nothing. |
+
+The bundled one-shot skills are `swe-review`, `swe-audit`, `swe-debt`,
+`swe-gain`, and `swe-help`. Review and audit now cover correctness, security,
+real load, missing tests, speed, and lean code—not only over-engineering.
 
 ## Install
 
@@ -47,9 +54,11 @@ codex plugin marketplace add bittahcriminal/SWE
 codex plugin add swe@swe
 ```
 
+Review and trust the lifecycle hooks, then start a new task.
+
 ### Claude Code
 
-```bash
+```text
 /plugin marketplace add bittahcriminal/SWE
 /plugin install swe@swe
 ```
@@ -61,8 +70,7 @@ copilot plugin marketplace add bittahcriminal/SWE
 copilot plugin install swe@swe
 ```
 
-Copilot installs SWE from its GitHub-hosted marketplace and loads its skills
-and native lifecycle hooks.
+Copilot loads the six skills and native session hooks.
 
 ### Gemini CLI
 
@@ -70,8 +78,9 @@ and native lifecycle hooks.
 gemini extensions install https://github.com/bittahcriminal/SWE --auto-update
 ```
 
-Gemini installs SWE as an extension, including its skills, `/swe` and
-`/swe-review` commands, and session-start context hook.
+Gemini loads `AGENTS.md` as always-on context and registers all six `/swe`
+commands and skills. Commands are turn-scoped; Gemini does not load the
+Claude/Codex lifecycle configuration.
 
 ### OpenCode
 
@@ -79,22 +88,20 @@ Gemini installs SWE as an extension, including its skills, `/swe` and
 swe install opencode
 ```
 
-The Go installer adds a managed SWE block to the global OpenCode `AGENTS.md`
-and installs SWE-owned skills and commands under `~/.config/opencode/`. It
-preserves unrelated rules and is safe to run again when updating SWE. Set
-`XDG_CONFIG_HOME` to use a different configuration root.
+The Go installer merges a managed SWE block into the global OpenCode
+`AGENTS.md` and installs all six skills and commands under
+`~/.config/opencode/`. Existing rules are preserved, and rerunning the command
+updates only SWE-owned content. Set `XDG_CONFIG_HOME` to choose another root.
 
 Start a new host session after installation. Qoder users can copy the template
-under [`hooks/qoder-hooks.json`](hooks/qoder-hooks.json).
-
-Instruction-only agents can copy [`AGENTS.md`](AGENTS.md) into a repository or
-user-level agent configuration.
+under [`hooks/qoder-hooks.json`](hooks/qoder-hooks.json). Instruction-only
+agents can use [`AGENTS.md`](AGENTS.md) directly.
 
 ## CLI
 
 ```text
-swe instructions [lite|full|ultra|review]  print the embedded ruleset
-swe mode [MODE]                            read or set host-scoped session mode
+swe instructions [lite|full|ultra|review]  print an embedded ruleset
+swe mode [MODE]                            read or set lite/full/ultra/off
 swe default [MODE]                         read or persist the startup mode
 swe status [--badge]                       inspect state or print [SWE:MODE]
 swe install opencode [--config-dir PATH]   install global OpenCode integration
@@ -104,48 +111,55 @@ swe hook subagent-start                    lifecycle hook entrypoint; reads JSON
 ```
 
 Hook-based hosts accept `/swe lite|full|ultra|off`, `/swe default <mode>`, and
-`/swe-review`. Gemini and OpenCode expose turn-scoped `/swe
-[lite|full|ultra]` and `/swe-review` commands. Codex skill invocations use
-`@swe` and `@swe-review`. The standalone phrases `stop swe` and `normal mode`
-deactivate hook-based sessions.
+the standalone phrases `stop swe` and `normal mode`. Bare `/swe` reports the
+live level or reactivates SWE at the configured default (`full` when the
+default is `off`). Review is one-shot and never becomes a session mode.
+
+Gemini and OpenCode expose turn-scoped `/swe`, `/swe-review`, `/swe-audit`,
+`/swe-debt`, `/swe-gain`, and `/swe-help`. Codex skill invocations use the
+plugin namespace, for example `$swe:swe-review`.
 
 ## Configuration
 
-Resolution order for the startup default:
+Startup default resolution:
 
 1. `SWE_DEFAULT_MODE`
 2. `defaultMode` in `~/.config/swe/config.json`
 3. `full`
 
-On Windows the config file lives at `%APPDATA%\swe\config.json`; setting
+On Windows the config file is `%APPDATA%\swe\config.json`.
 `XDG_CONFIG_HOME` overrides the base directory on every platform.
 
-Session state is isolated by host: Codex uses `PLUGIN_DATA`, Copilot uses
-`COPILOT_PLUGIN_DATA`, Gemini uses `~/.gemini`, Qoder uses `~/.qoder`, and
-Claude uses `CLAUDE_CONFIG_DIR` or `~/.claude`.
+Live mode is isolated by host and, when the host supplies a project directory,
+by project. A shared flag is also maintained for status lines. Context
+compaction preserves the live level instead of resetting to the default.
+Qoder honors `QODER_CONFIG_DIR` and remembers an explicit `off` across prompts.
 
 Set `SWE_SUBAGENT_MATCHER` to a case-insensitive regular expression to limit
-subagent injection by `agent_type`. Unset means every subagent. Invalid or
-missing metadata fails open and injects the rules so the mode is never silently
-lost.
+subagent injection by `agent_type`. Missing metadata and invalid expressions
+fail open so the rules are not silently lost.
 
-## Scope and compatibility
+Session start also adds a bounded map of reusable top-level symbols. It reads
+tracked source files, skips tests, generated/build/vendor paths, unsafe names,
+and symlinks, and emits identifiers only. Set `SWE_MAP=0` to disable it or
+`SWE_MAP_CHARS` to change the default 2000-character budget.
 
-The Go runtime covers the portable core:
+## Scope
 
-- Claude Code, Codex, Copilot CLI, Gemini CLI, and Qoder hook output formats
-- default and session mode persistence
-- mode commands and standalone deactivation
-- subagent context propagation and optional matching
-- embedded main and review rules
-- installable skills for review, audit, debt, gain, and help
-- a cross-platform status badge via `swe status --badge`
-- a Go-powered global installer for OpenCode rules, skills, and commands
+The Go runtime provides:
 
-OpenCode loads SWE through its native rules, skills, and command directories;
-it does not expose SWE's lifecycle mode state. Pi and Hermes require
-host-specific JavaScript or Python plugin APIs, so use
-`swe instructions <mode>` as their host-neutral integration point.
+- Claude Code, Codex, Copilot CLI, Gemini CLI, and Qoder output formats
+- default, host, and project mode persistence
+- mode switching, standalone deactivation, and compaction preservation
+- subagent propagation and optional matching
+- safe, bounded codebase mapping
+- six installable skills and host-native command files
+- an OpenCode rules/skills/commands installer
+- a cross-platform status badge through `swe status --badge`
+
+OpenCode and Gemini use native instruction, skill, and command loading rather
+than SWE lifecycle state. Hosts that require JavaScript or Python plugin APIs
+can use `swe instructions <mode>` as the Go-neutral integration point.
 
 ## Development
 
@@ -163,5 +177,4 @@ and Windows.
 ## License
 
 SWE is an independent project released under the MIT License. See
-[`NOTICE`](NOTICE) for project status and [`LICENSE`](LICENSE) for the license
-terms and retained copyright notices.
+[`NOTICE`](NOTICE) and [`LICENSE`](LICENSE).

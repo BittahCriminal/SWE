@@ -24,7 +24,7 @@ func TestCodexLifecycleAndPromptCommands(t *testing.T) {
 	t.Setenv("SWE_DEFAULT_MODE", "ultra")
 
 	output := decodeOutput(t, HandleSessionStart())
-	if output.SystemMessage != "SWE:ULTRA" || output.HookSpecificOutput == nil || !strings.Contains(output.HookSpecificOutput.AdditionalContext, "level: ultra") {
+	if output.SystemMessage != "" || output.HookSpecificOutput == nil || !strings.Contains(output.HookSpecificOutput.AdditionalContext, "level: ultra") {
 		t.Fatalf("unexpected session output: %#v", output)
 	}
 	if output.AdditionalContext != "" {
@@ -32,7 +32,7 @@ func TestCodexLifecycleAndPromptCommands(t *testing.T) {
 	}
 
 	output = decodeOutput(t, HandlePromptSubmit(strings.NewReader(`{"prompt":"@swe lite"}`)))
-	if output.SystemMessage != "SWE:LITE" {
+	if output.SystemMessage != "" || output.HookSpecificOutput == nil || !strings.Contains(output.HookSpecificOutput.AdditionalContext, "## Before you write") {
 		t.Fatalf("mode switch output: %#v", output)
 	}
 	if mode, ok := ReadMode(); !ok || mode != ModeLite {
@@ -52,11 +52,76 @@ func TestCodexLifecycleAndPromptCommands(t *testing.T) {
 	}
 
 	output = decodeOutput(t, HandlePromptSubmit(strings.NewReader(`{"prompt":"normal mode"}`)))
-	if output.SystemMessage != "SWE:OFF" {
+	if output.SystemMessage != "" || output.HookSpecificOutput == nil || output.HookSpecificOutput.AdditionalContext != "SWE MODE OFF" {
 		t.Fatalf("deactivation output: %#v", output)
 	}
 	if _, ok := ReadMode(); ok {
 		t.Fatal("deactivation left state behind")
+	}
+}
+
+func TestBareCommandActivatesAndReviewStaysOneShot(t *testing.T) {
+	isolateEnvironment(t)
+	t.Setenv("PLUGIN_DATA", t.TempDir())
+	t.Setenv("SWE_DEFAULT_MODE", "off")
+	output := decodeOutput(t, HandlePromptSubmit(strings.NewReader(`{"prompt":"/swe"}`)))
+	if output.HookSpecificOutput == nil || !strings.Contains(output.HookSpecificOutput.AdditionalContext, "level: full") {
+		t.Fatalf("bare /swe did not activate full: %#v", output)
+	}
+	if mode, ok := ReadMode(); !ok || mode != ModeFull {
+		t.Fatalf("active mode = %q, %v; want full", mode, ok)
+	}
+	if got := HandlePromptSubmit(strings.NewReader(`{"prompt":"/swe-review"}`)); len(got) != 0 {
+		t.Fatalf("review skill was intercepted: %q", got)
+	}
+	if mode, ok := ReadMode(); !ok || mode != ModeFull {
+		t.Fatalf("review changed session mode to %q, %v", mode, ok)
+	}
+}
+
+func TestCompactionKeepsLiveModeAndOff(t *testing.T) {
+	isolateEnvironment(t)
+	t.Setenv("PLUGIN_DATA", t.TempDir())
+	t.Setenv("SWE_DEFAULT_MODE", "full")
+	if err := SetMode(ModeUltra); err != nil {
+		t.Fatal(err)
+	}
+	output := decodeOutput(t, HandleSessionStartInput(strings.NewReader(`{"source":"compact"}`)))
+	if output.HookSpecificOutput == nil || !strings.Contains(output.HookSpecificOutput.AdditionalContext, "level: ultra") {
+		t.Fatalf("compaction reset live mode: %#v", output)
+	}
+	if err := ClearMode(); err != nil {
+		t.Fatal(err)
+	}
+	if got := HandleSessionStartInput(strings.NewReader(`{"source":"compact"}`)); len(got) != 0 {
+		t.Fatalf("compaction reactivated an off session: %q", got)
+	}
+}
+
+func TestOffSessionStartIsSilent(t *testing.T) {
+	isolateEnvironment(t)
+	t.Setenv("SWE_DEFAULT_MODE", "off")
+	if got := HandleSessionStart(); len(got) != 0 {
+		t.Fatalf("off startup output = %q", got)
+	}
+}
+
+func TestSessionStartIncludesBoundedCodebaseMap(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "internal", "reuse.go")
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("package internal\nfunc ExistingHelper() {}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	isolateEnvironment(t)
+	t.Setenv("PLUGIN_DATA", t.TempDir())
+	t.Setenv("CLAUDE_PROJECT_DIR", root)
+	t.Setenv("SWE_MAP", "1")
+	output := decodeOutput(t, HandleSessionStart())
+	if output.HookSpecificOutput == nil || !strings.Contains(output.HookSpecificOutput.AdditionalContext, "internal/: ExistingHelper") {
+		t.Fatalf("session map missing: %#v", output)
 	}
 }
 
@@ -156,6 +221,18 @@ func TestQoderInjectsEveryTurn(t *testing.T) {
 	output = decodeOutput(t, HandlePromptSubmit(strings.NewReader(`{"prompt":"/swe ultra"}`)))
 	if !strings.Contains(output.HookSpecificOutput.AdditionalContext, "MODE CHANGED") || !strings.Contains(output.HookSpecificOutput.AdditionalContext, "level: ultra") {
 		t.Fatalf("Qoder mode switch output: %#v", output)
+	}
+}
+
+func TestQoderOffPersistsAcrossPrompts(t *testing.T) {
+	isolateEnvironment(t)
+	t.Setenv("QODER_SESSION_ID", "test-session")
+	t.Setenv("QODER_CONFIG_DIR", t.TempDir())
+	if got := HandlePromptSubmit(strings.NewReader(`{"prompt":"/swe off"}`)); len(got) == 0 {
+		t.Fatal("off command produced no confirmation")
+	}
+	if got := HandlePromptSubmit(strings.NewReader(`{"prompt":"write a function"}`)); len(got) != 0 {
+		t.Fatalf("Qoder reactivated after off: %q", got)
 	}
 }
 

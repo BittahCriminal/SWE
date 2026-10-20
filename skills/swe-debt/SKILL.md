@@ -1,20 +1,35 @@
 ---
 name: swe-debt
 description: >
-  Collect every deliberate `swe:` shortcut comment into a debt ledger with its
-  ceiling and upgrade trigger. Use for /swe-debt or "list SWE shortcuts".
+  List every `shortcut:` comment and older `swe:` marker as a debt ledger.
+  One-shot, read-only report. Use for "SWE debt", "what did SWE defer",
+  "list the shortcuts", or /swe-debt.
 ---
 
 # SWE Debt
 
-Search comments for `swe:` while skipping version-control, dependency, and
-build-output directories. Each marker should use
-`swe: <known ceiling>, <upgrade trigger>`.
+Every deliberate shortcut should name its ceiling and upgrade path. This skill
+collects those decisions so a deferral cannot quietly become permanent.
 
-Group results by file:
+## Scan
 
-`<file>:<line>, <simplification>. ceiling: <limit>. upgrade: <trigger>.`
+Search tracked and unignored files for comment markers:
 
-Tag markers without a concrete upgrade condition as `no-trigger`. End with
-`<N> markers, <M> with no trigger.` If none exist, say
-`No swe: debt. Clean ledger.` Read and report only unless asked to persist it.
+`git grep --no-index --exclude-standard -nE '(#|//|/[*]) ?(shortcut|swe):'`
+
+Add other comment prefixes when the stack needs them. If the user names a
+custom marker (`/swe-debt TODO`), search for that instead. Skip prose and notes
+about keyboard shortcuts that are not deferrals.
+
+## Output
+
+One row per marker, grouped by file:
+
+`<file>:<line>, <what was simplified>. ceiling: <limit>. upgrade: <trigger>.`
+
+The convention is `shortcut: <ceiling>, <upgrade path>`. Flag a marker without
+a concrete upgrade path as `no-trigger`. End with
+`<N> markers, <M> with no trigger.` Nothing found:
+`No shortcut debt. Clean ledger.`
+
+Read and report only. Persist a ledger only when asked.
